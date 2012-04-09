@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Hooks;
 using TShockAPI;
 using Terraria;
 
@@ -20,6 +21,9 @@ namespace TeamSpawn
                                                               {"blue", 2}, 
                                                               {"yellow", 3}
                                                           };
+
+        private Dictionary<int, int> deadplayers; 
+
         public override Version Version
         {
             get { return new Version("1.1"); }
@@ -57,17 +61,68 @@ namespace TeamSpawn
             {
                 spawns = Config.WriteFile(savepath);
             }
+
+            deadplayers = new Dictionary<int,int>(255);
         }
 
         public override void Initialize()
         {
-            Commands.ChatCommands.Add(new Command("TeamSpawn", HandleCommand, "teamspawn"));
+            Commands.ChatCommands.Add(new Command("teamspawn", HandleCommand, "teamspawn"));
             TShockAPI.GetDataHandlers.PlayerTeam += ChangeTeam;
+            GetDataHandlers.KillMe += HandleDeath;
+            GameHooks.Update += OnUpdate;
         }
 
+        private void OnUpdate()
+        {
+            foreach( TSPlayer ply in TShock.Players )
+            {
+                if( ply != null && ply.Active)
+                if( ply.TPlayer.dead )
+                {
+                    if( deadplayers.ContainsKey(ply.Index) )
+                    {
+                        int team = deadplayers[ply.Index];
+                        if (team == 0)
+                        {
+                            continue;
+                        }
+                        deadplayers.Remove(ply.Index);
+                        Point spawn = spawns.GetSpawn(team - 1);
+                        ply.Teleport(spawn.X, spawn.Y);
+                    }
+                }
+            }
+        }
+
+        private void HandleDeath( object sender, GetDataHandlers.KillMeEventArgs args )
+        {
+            if (args.Handled)
+                return;
+
+            byte PlayerID = args.PlayerId;
+            byte hitDirection = args.Direction;
+            Int16 Damage = args.Damage;
+            bool PVP = args.Pvp;
+
+            if( !deadplayers.ContainsKey(PlayerID) )
+            {
+                deadplayers.Add(PlayerID, TShock.Players[PlayerID].Team);
+            }
+            else
+            {
+                deadplayers.Remove(PlayerID);
+                deadplayers.Add(PlayerID, TShock.Players[PlayerID].Team);
+            }
+        }
         protected void Dispose(bool disposing)
         {
-            
+            if( disposing )
+            {
+                TShockAPI.GetDataHandlers.PlayerTeam -= ChangeTeam;
+                GetDataHandlers.KillMe -= HandleDeath;
+                GameHooks.Update -= OnUpdate;
+            }
             base.Dispose(disposing);
         }
 
