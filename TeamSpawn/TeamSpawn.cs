@@ -9,18 +9,11 @@ using Terraria;
 
 namespace TeamSpawn
 {
-    [APIVersion(1, 11)]
+    [APIVersion(1, 12)]
     public class TeamSpawn : TerrariaPlugin
     {
         private Spawns spawns;
         private string savepath = Path.Combine(TShock.SavePath, "TeamSpawn.cfg");
-        private Dictionary<string, int> teamsColors = new Dictionary<string, int>()
-                                                          {
-                                                              {"red", 0}, 
-                                                              {"green", 1}, 
-                                                              {"blue", 2}, 
-                                                              {"yellow", 3}
-                                                          };
 
         private Dictionary<int, int> deadplayers; 
 
@@ -41,7 +34,7 @@ namespace TeamSpawn
 
         public override string Description
         {
-            get { return "Allows you to set spawn for the different teams."; }
+            get { return "Allows you to set spawn for the different teams, and groups!"; }
         }
 
         public TeamSpawn(Main game) : base(game)
@@ -83,12 +76,17 @@ namespace TeamSpawn
                     if( deadplayers.ContainsKey(ply.Index) )
                     {
                         int team = deadplayers[ply.Index];
+                        deadplayers.Remove(ply.Index);
+                        Point spawn;
                         if (team == 0)
                         {
-                            continue;
+                            spawn = spawns.GetSpawn(ply.Group.Name);
                         }
-                        deadplayers.Remove(ply.Index);
-                        Point spawn = spawns.GetSpawn(team - 1);
+                        else
+                        {
+                            spawn = spawns.GetSpawn(team - 1);
+                        }
+
                         ply.Teleport(spawn.X, spawn.Y);
                     }
                 }
@@ -115,7 +113,7 @@ namespace TeamSpawn
                 deadplayers.Add(PlayerID, TShock.Players[PlayerID].Team);
             }
         }
-        protected void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
             if( disposing )
             {
@@ -144,10 +142,19 @@ namespace TeamSpawn
                 int id = -1;
                 if( !int.TryParse(args.Parameters[1], out id) )
                 {
-                    if( teamsColors.ContainsKey(args.Parameters[1].ToLower() ) )
+                    //group name
+                    if (TShock.Groups.GroupExists(args.Parameters[1]))
                     {
-                        id = teamsColors[args.Parameters[1].ToLower()];
+                        spawns.AddGroup(args.Parameters[1]);
+                        Point p = new Point(args.Player.TileX, args.Player.TileY);
+                        spawns.SetSpawn(p, args.Parameters[1]);
+                        args.Player.SendMessage(String.Format("Group {0}'s spawn has been set to {1}, {2}", args.Parameters[1], p.X, p.Y), Color.Green);
                     }
+                    else
+                    {
+                        args.Player.SendMessage(String.Format("Error: Group {0} does not exist", args.Parameters[1]), Color.Red);
+                    }
+                    return;
                 }
 
                 if( id >= 0 && id <= 3)
@@ -167,17 +174,26 @@ namespace TeamSpawn
                 int id = -1;
                 if (!int.TryParse(args.Parameters[1], out id))
                 {
-                    if (teamsColors.ContainsKey(args.Parameters[1].ToLower()))
+                    //group name
+                    if (TShock.Groups.GroupExists(args.Parameters[1]))
                     {
-                        id = teamsColors[args.Parameters[1].ToLower()];
+                        spawns.AddGroup(args.Parameters[1]);
+                        Point p = new Point(-1, -1);
+                        spawns.SetSpawn(p, args.Parameters[1]);
+                        args.Player.SendMessage(String.Format("Group {0}'s spawn has been reset", args.Parameters[1]), Color.Green);
                     }
+                    else
+                    {
+                        args.Player.SendMessage(String.Format("Error: Group {0} does not exist", args.Parameters[1]), Color.Red);
+                    }
+                    return;
                 }
 
                 if (id >= 0 && id <= 3)
                 {
                     Point p = new Point(-1, -1);
                     spawns.SetSpawn(p, id);
-                    args.Player.SendMessage(String.Format("Team {0}'s spawn has been set to {1}, {2}", id, p.X, p.Y), Color.Green);
+                    args.Player.SendMessage(String.Format("Team {0}'s spawn has been reset", id), Color.Green);
                 }
                 else
                 {
