@@ -78,16 +78,23 @@ namespace TeamSpawn
                         int team = deadplayers[ply.Index];
                         deadplayers.Remove(ply.Index);
                         Point spawn;
-                        if (team == 0)
-                        {
-                            spawn = spawns.GetSpawn(ply.Group.Name);
-                        }
-                        else
+                        if (team != 0)
                         {
                             spawn = spawns.GetSpawn(team - 1);
                         }
+                        else
+                        {
+                            spawn = spawns.GetSpawn(ply.Group.Name); 
+                        }
 
-                        ply.Teleport(spawn.X, spawn.Y);
+                        if (spawn.X == -1 || spawn.Y == -1)
+                        {
+                            ply.Spawn();
+                        }
+                        else
+                        {
+                            ply.Teleport(spawn.X, spawn.Y);
+                        }
                     }
                 }
             }
