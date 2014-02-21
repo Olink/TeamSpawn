@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Hooks;
 using TShockAPI;
 using Terraria;
+using TerrariaApi.Server;
 
 namespace TeamSpawn
 {
-    [APIVersion(1, 12)]
+    [ApiVersion(1, 15)]
     public class TeamSpawn : TerrariaPlugin
     {
         private Spawns spawns;
@@ -63,10 +63,10 @@ namespace TeamSpawn
             Commands.ChatCommands.Add(new Command("teamspawn", HandleCommand, "teamspawn"));
             TShockAPI.GetDataHandlers.PlayerTeam += ChangeTeam;
             GetDataHandlers.KillMe += HandleDeath;
-            GameHooks.Update += OnUpdate;
+            ServerApi.Hooks.GameUpdate.Register(this, OnUpdate);
         }
 
-        private void OnUpdate()
+        private void OnUpdate(EventArgs e)
         {
             foreach( TSPlayer ply in TShock.Players )
             {
@@ -126,7 +126,7 @@ namespace TeamSpawn
             {
                 TShockAPI.GetDataHandlers.PlayerTeam -= ChangeTeam;
                 GetDataHandlers.KillMe -= HandleDeath;
-                GameHooks.Update -= OnUpdate;
+                ServerApi.Hooks.GameUpdate.Deregister(this, OnUpdate);
             }
             base.Dispose(disposing);
         }
