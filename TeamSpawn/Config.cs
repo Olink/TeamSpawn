@@ -8,40 +8,75 @@ using Formatting = System.Xml.Formatting;
 
 namespace TeamSpawn
 {
-    public static class Config
+    public class Config
     {
-        public static Spawns WriteFile(String file)
-        {
-            TextWriter tw = new StreamWriter(file);
+	    public Spawns Spawns = new Spawns();
 
-            Spawns spawns = new Spawns();
+		/// <summary>
+		/// Reads a configuration file from a given path
+		/// </summary>
+		/// <param name="path">string path</param>
+		/// <returns>ConfigFile object</returns>
+		public static Config Read(string path)
+		{
+			if (!File.Exists(path))
+			{
+				var c = new Config();
+				c.Spawns.spawns = new List<Point>(4)
+				{ 
+					new Point(-1, -1),
+					new Point(-1, -1),
+					new Point(-1, -1),
+					new Point(-1, -1)
+				};
+				c.Spawns.GroupIds = new Dictionary<string, int>();
+				c.Spawns.forceSpawn = false;
 
-            tw.Write(JsonConvert.SerializeObject(spawns, Newtonsoft.Json.Formatting.Indented));
-            tw.Close();
+				return c;
+			}
+			using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+			{
+				return Read(fs);
+			}
+		}
 
-            return spawns;
-        }
+		/// <summary>
+		/// Reads the configuration file from a stream
+		/// </summary>
+		/// <param name="stream">stream</param>
+		/// <returns>ConfigFile object</returns>
+		public static Config Read(Stream stream)
+		{
+			using (var sr = new StreamReader(stream))
+			{
+				var cf = JsonConvert.DeserializeObject<Config>(sr.ReadToEnd());
+				return cf;
+			}
+		}
 
-        public static void Save(String file, Spawns spawns)
-        {
-            /*if( File.Exists(file))
-            {
-                File.Delete(file);
-            }*/
-            TextWriter tw = new StreamWriter(file);
-            tw.Write(JsonConvert.SerializeObject(spawns, Newtonsoft.Json.Formatting.Indented));
-            tw.Close();
-        }
+		/// <summary>
+		/// Writes the configuration to a given path
+		/// </summary>
+		/// <param name="path">string path - Location to put the config file</param>
+		public void Write(string path)
+		{
+			using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Write))
+			{
+				Write(fs);
+			}
+		}
 
-        public static Spawns ReadFile(String file)
-        {
-            Spawns spawns;
-            using (var tr = new StreamReader(file))
-            {
-                String raw = tr.ReadToEnd();
-                spawns = JsonConvert.DeserializeObject<Spawns>(raw);
-            }
-            return spawns;
-        }
+		/// <summary>
+		/// Writes the configuration to a stream
+		/// </summary>
+		/// <param name="stream">stream</param>
+		public void Write(Stream stream)
+		{
+			var str = JsonConvert.SerializeObject(this, Newtonsoft.Json.Formatting.Indented);
+			using (var sw = new StreamWriter(stream))
+			{
+				sw.Write(str);
+			}
+		}
     }
 }

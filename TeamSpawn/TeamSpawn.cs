@@ -3,17 +3,19 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using TShockAPI;
+using TeamSpawn;
 using Terraria;
 using TerrariaApi.Server;
+using TShockAPI;
+
 
 namespace TeamSpawn
 {
-    [ApiVersion(1, 15)]
-    public class TeamSpawn : TerrariaPlugin
-    {
-        private Spawns spawns;
+	[ApiVersion(1, 16)]
+	public class TeamSpawn : TerrariaPlugin
+	{
         private string savepath = Path.Combine(TShock.SavePath, "TeamSpawn.cfg");
+		private Config config;
 
         private Dictionary<int, int> deadplayers; 
 
@@ -39,22 +41,8 @@ namespace TeamSpawn
 
         public TeamSpawn(Main game) : base(game)
         {
-            if (File.Exists(savepath))
-            {
-                try
-                {
-                    spawns = Config.ReadFile(savepath);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                }
-            }
-            else
-            {
-                spawns = Config.WriteFile(savepath);
-            }
-
+	        config = Config.Read(savepath);
+			config.Write(savepath);
             deadplayers = new Dictionary<int,int>(255);
         }
 
@@ -71,7 +59,7 @@ namespace TeamSpawn
             foreach( TSPlayer ply in TShock.Players )
             {
                 if( ply != null && ply.Active)
-                if( ply.TPlayer.dead )
+                if( !ply.TPlayer.dead )
                 {
                     if( deadplayers.ContainsKey(ply.Index) )
                     {
@@ -80,11 +68,11 @@ namespace TeamSpawn
                         Point spawn;
                         if (team != 0)
                         {
-                            spawn = spawns.GetSpawn(team - 1);
+                            spawn = config.Spawns.GetSpawn(team - 1);
                         }
                         else
                         {
-                            spawn = spawns.GetSpawn(ply.Group.Name); 
+							spawn = config.Spawns.GetSpawn(ply.Group.Name); 
                         }
 
                         if (spawn.X == -1 || spawn.Y == -1)
@@ -93,7 +81,7 @@ namespace TeamSpawn
                         }
                         else
                         {
-                            ply.Teleport(spawn.X, spawn.Y);
+                            ply.Teleport(spawn.X * 16, spawn.Y * 16);
                         }
                     }
                 }
@@ -124,6 +112,7 @@ namespace TeamSpawn
         {
             if( disposing )
             {
+				config.Write(savepath);
                 TShockAPI.GetDataHandlers.PlayerTeam -= ChangeTeam;
                 GetDataHandlers.KillMe -= HandleDeath;
                 ServerApi.Hooks.GameUpdate.Deregister(this, OnUpdate);
@@ -139,7 +128,7 @@ namespace TeamSpawn
 
             if( args.Parameters.Count < 2 )
             {
-                args.Player.SendMessage("Usage: /teamspawn [set|reset] [0-3]", Color.Red);
+                args.Player.SendMessage("Usage: /teamspawn [set|reset] [group name | 0-3]", Color.Red);
                 args.Player.SendMessage("       /teamspawn [force] [true|false]", Color.Red);
                 return;
             }
@@ -152,9 +141,9 @@ namespace TeamSpawn
                     //group name
                     if (TShock.Groups.GroupExists(args.Parameters[1]))
                     {
-                        spawns.AddGroup(args.Parameters[1]);
+						config.Spawns.AddGroup(args.Parameters[1]);
                         Point p = new Point(args.Player.TileX, args.Player.TileY);
-                        spawns.SetSpawn(p, args.Parameters[1]);
+						config.Spawns.SetSpawn(p, args.Parameters[1]);
                         args.Player.SendMessage(String.Format("Group {0}'s spawn has been set to {1}, {2}", args.Parameters[1], p.X, p.Y), Color.Green);
                     }
                     else
@@ -167,7 +156,7 @@ namespace TeamSpawn
                 if( id >= 0 && id <= 3)
                 {
                     Point p = new Point( args.Player.TileX, args.Player.TileY );
-                    spawns.SetSpawn( p, id );
+					config.Spawns.SetSpawn(p, id);
                     args.Player.SendMessage(String.Format("Team {0}'s spawn has been set to {1}, {2}", id, p.X, p.Y), Color.Green);
                 }
                 else
@@ -184,9 +173,9 @@ namespace TeamSpawn
                     //group name
                     if (TShock.Groups.GroupExists(args.Parameters[1]))
                     {
-                        spawns.AddGroup(args.Parameters[1]);
+						config.Spawns.AddGroup(args.Parameters[1]);
                         Point p = new Point(-1, -1);
-                        spawns.SetSpawn(p, args.Parameters[1]);
+						config.Spawns.SetSpawn(p, args.Parameters[1]);
                         args.Player.SendMessage(String.Format("Group {0}'s spawn has been reset", args.Parameters[1]), Color.Green);
                     }
                     else
@@ -199,7 +188,7 @@ namespace TeamSpawn
                 if (id >= 0 && id <= 3)
                 {
                     Point p = new Point(-1, -1);
-                    spawns.SetSpawn(p, id);
+					config.Spawns.SetSpawn(p, id);
                     args.Player.SendMessage(String.Format("Team {0}'s spawn has been reset", id), Color.Green);
                 }
                 else
@@ -210,24 +199,21 @@ namespace TeamSpawn
             }
             else if (args.Parameters[0] == "force")
             {
-                bool force = spawns.forceSpawn;
+				bool force = config.Spawns.forceSpawn;
                 if( !bool.TryParse(args.Parameters[1], out force))
                 {
                     args.Player.SendMessage("Error: Valid force options are 'true' and 'false'", Color.Red);
                     return;
                 }
-                spawns.forceSpawn = force;
+				config.Spawns.forceSpawn = force;
                 args.Player.SendMessage(String.Format("Team spawn force has been set to {0}", force), Color.Green);
-                
             }
             else
             {
-                args.Player.SendMessage("Usage: /teamspawn [set|reset] [0-3]", Color.Red);
+				args.Player.SendMessage("Usage: /teamspawn [set|reset] [group name | 0-3]", Color.Red);
                 args.Player.SendMessage("       /teamspawn [force] [true|false]", Color.Red);
                 return;
             }
-
-            Config.Save(savepath, spawns);
         }
 
         private void ChangeTeam( object sender, GetDataHandlers.PlayerTeamEventArgs args )
@@ -235,24 +221,24 @@ namespace TeamSpawn
             TSPlayer player = TShock.Players[args.PlayerId];
             if( args.Team == 0 )
             {
-                if( spawns.forceSpawn )
+				if (config.Spawns.forceSpawn)
                 {
                     player.Spawn();
                 }
             }
             else
             {
-                Point spawn = spawns.GetSpawn(args.Team - 1);
+				Point spawn = config.Spawns.GetSpawn(args.Team - 1);
                 if( spawn.X == -1 || spawn.Y == -1 )
                 {
-                    if (spawns.forceSpawn)
+					if (config.Spawns.forceSpawn)
                     {
                         player.Spawn();
                     }
                 }
                 else
                 {
-                    player.Teleport(spawn.X, spawn.Y);
+                    player.Teleport(spawn.X * 16, spawn.Y * 16);
                 }
             }
         }

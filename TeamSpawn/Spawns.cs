@@ -9,22 +9,12 @@ namespace TeamSpawn
     [Serializable()]
     public class Spawns
     {
-        public List<Point> spawns;
+        public List<Point> spawns = new List<Point>();
         public bool forceSpawn;
-        private Dictionary<string, int> GroupIds;
+        public Dictionary<string, int> GroupIds = new Dictionary<string, int>();
 
         public Spawns()
         {
-            spawns = new List<Point>(4)
-            { 
-                new Point(-1, -1),
-                new Point(-1, -1),
-                new Point(-1, -1),
-                new Point(-1, -1)
-            };
-
-            GroupIds = new Dictionary<string, int>();
-            forceSpawn = false;
         }
 
         public Point GetSpawn( int id )
