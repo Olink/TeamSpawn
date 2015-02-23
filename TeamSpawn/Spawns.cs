@@ -19,18 +19,18 @@ namespace TeamSpawn
 
         public Point GetSpawn( int id )
         {
-            if(id >= spawns.Count)
+            if(id >= spawns.Count || id < 0)
                 return new Point(-1,-1);
 
             return spawns[id];
         }
 
-        public Point GetSpawn(string group)
+        public Point GetSpawn(string group, int team)
         {
             if(GroupIds.ContainsKey(group))
                 return GetSpawn(GroupIds[group]);
 
-            return new Point(-1,-1);
+	        return GetSpawn(team);
         }
 
         public void SetSpawn(Point p, int id)

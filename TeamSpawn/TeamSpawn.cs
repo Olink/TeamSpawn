@@ -66,23 +66,15 @@ namespace TeamSpawn
                         int team = deadplayers[ply.Index];
                         deadplayers.Remove(ply.Index);
                         Point spawn;
-                        if (team != 0)
-                        {
-                            spawn = config.Spawns.GetSpawn(team - 1);
-                        }
-                        else
-                        {
-							spawn = config.Spawns.GetSpawn(ply.Group.Name); 
-                        }
-
-                        if (spawn.X == -1 || spawn.Y == -1)
-                        {
-                            ply.Spawn();
-                        }
-                        else
-                        {
-                            ply.Teleport(spawn.X * 16, spawn.Y * 16);
-                        }
+						spawn = config.Spawns.GetSpawn(ply.Group.Name, team);
+						if (spawn.X == -1 || spawn.Y == -1)
+						{
+							ply.Spawn();
+						}
+						else
+						{
+							ply.Teleport(spawn.X * 16, spawn.Y * 16);
+						}
                     }
                 }
             }
@@ -219,7 +211,8 @@ namespace TeamSpawn
         private void ChangeTeam( object sender, GetDataHandlers.PlayerTeamEventArgs args )
         {
             TSPlayer player = TShock.Players[args.PlayerId];
-            if( args.Team == 0 )
+			Point spawn = config.Spawns.GetSpawn(player.Group.Name, args.Team - 1);
+            if( spawn.X == -1 || spawn.Y == -1 )
             {
 				if (config.Spawns.forceSpawn)
                 {
@@ -228,18 +221,10 @@ namespace TeamSpawn
             }
             else
             {
-				Point spawn = config.Spawns.GetSpawn(args.Team - 1);
-                if( spawn.X == -1 || spawn.Y == -1 )
-                {
-					if (config.Spawns.forceSpawn)
-                    {
-                        player.Spawn();
-                    }
-                }
-                else
-                {
-                    player.Teleport(spawn.X * 16, spawn.Y * 16);
-                }
+	            if (config.Spawns.forceSpawn)
+	            {
+		            player.Teleport(spawn.X*16, spawn.Y*16);
+	            }
             }
         }
     }
