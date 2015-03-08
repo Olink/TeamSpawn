@@ -11,7 +11,7 @@ using TShockAPI;
 
 namespace TeamSpawn
 {
-	[ApiVersion(1, 16)]
+	[ApiVersion(1, 17)]
 	public class TeamSpawn : TerrariaPlugin
 	{
         private string savepath = Path.Combine(TShock.SavePath, "TeamSpawn.cfg");
